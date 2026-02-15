@@ -18,7 +18,7 @@ async def subscribe(request: Request, user: Any = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Billing not configured")
 
     try:
-        url = routes_module.create_checkout(user_id=user.id, email=user.email, price_id="premium")
+        url = routes_module.create_checkout(user_id=user.id, email=user.email, price_id="price_1T18q3EiGP71krhYyrOZ0Imn")
         return RedirectResponse(url=url, status_code=status.HTTP_303_SEE_OTHER)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Checkout failed: {str(e)[:200]}")
