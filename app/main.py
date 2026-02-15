@@ -1,30 +1,26 @@
 from fastapi import FastAPI, Depends, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
-from app.database import engine, Base, get_db
+from app.database import engine, Base, get_db, SessionLocal
 import app.routes as routes_module
-from app.routes import notes, ai, billing
+from app.routes import dashboard, contacts, pipeline, activities, intel, billing
+from app.seed import seed_crm_data
 # Start imports for viv-auth and viv-pay
 from viv_auth import init_auth
 from viv_pay import init_pay
 
-app = FastAPI()
+app = FastAPI(title="CRM Pro")
 
 # Health check (must be first)
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
-# Root redirect
-@app.get("/")
-def root():
-    return RedirectResponse(url="/notes", status_code=303)
-
 # Initialize Auth
-User, require_auth = init_auth(app, engine, Base, get_db, app_name="AI Notes")
+User, require_auth = init_auth(app, engine, Base, get_db, app_name="CRM Pro")
 
 # Initialize Pay
-create_checkout, get_customer, require_subscription = init_pay(app, engine, Base, get_db, app_name="AI Notes")
+create_checkout, get_customer, require_subscription = init_pay(app, engine, Base, get_db, app_name="CRM Pro")
 
 # Wrapper: chain auth -> subscription check so require_subscription gets user_id
 # viv-auth uses encrypted session cookie (viv_session), not a user_id cookie,
@@ -47,15 +43,23 @@ app.dependency_overrides[routes_module.get_active_subscription] = require_active
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Include routers
-app.include_router(notes.router)
-app.include_router(ai.router)
+app.include_router(dashboard.router)
+app.include_router(contacts.router)
+app.include_router(pipeline.router)
+app.include_router(activities.router)
+app.include_router(intel.router)
 app.include_router(billing.router)
 
 # Startup event
 @app.on_event("startup")
 def startup_event():
     # Ensure all tables are created
-    # This includes User (from viv-auth), Billing tables (from viv-pay), and Note (from app.models)
-    # We must import app.models so Note is registered in Base
     import app.models
     Base.metadata.create_all(bind=engine)
+    
+    # Seed data
+    db = SessionLocal()
+    try:
+        seed_crm_data(db)
+    finally:
+        db.close()

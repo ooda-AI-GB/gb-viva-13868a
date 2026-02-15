@@ -1,0 +1,69 @@
+{% extends "layout/base.html" %}
+
+{% block content %}
+<div class="top-bar">
+    <h1>{{ "Edit Contact" if contact else "New Contact" }}</h1>
+</div>
+
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <form action="{{ '/contacts/' + str(contact.id) + '/edit' if contact else '/contacts/new' }}" method="post">
+        <div class="form-group">
+            <label>Name</label>
+            <input type="text" name="name" value="{{ contact.name if contact else '' }}" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" name="email" value="{{ contact.email if contact else '' }}" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Phone</label>
+            <input type="text" name="phone" value="{{ contact.phone if contact else '' }}">
+        </div>
+        
+        <div class="form-group">
+            <label>Company</label>
+            <input type="text" name="company" value="{{ contact.company if contact else '' }}">
+        </div>
+        
+        <div class="form-group">
+            <label>Title</label>
+            <input type="text" name="title" value="{{ contact.title if contact else '' }}">
+        </div>
+        
+        <div class="form-group">
+            <label>Status</label>
+            <select name="status" required>
+                {% set statuses = ["lead", "contacted", "proposal", "negotiation", "closed_won", "closed_lost"] %}
+                {% for s in statuses %}
+                <option value="{{ s }}" {{ 'selected' if contact and contact.status == s else '' }}>{{ s.replace('_', ' ')|capitalize }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Source</label>
+            <select name="source">
+                <option value="">Select Source</option>
+                {% set sources = ["website", "referral", "cold_call", "linkedin", "other"] %}
+                {% for s in sources %}
+                <option value="{{ s }}" {{ 'selected' if contact and contact.source == s else '' }}>{{ s.replace('_', ' ')|capitalize }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Notes</label>
+            <textarea name="notes">{{ contact.notes if contact else '' }}</textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Assigned To</label>
+            <input type="text" name="assigned_to" value="{{ contact.assigned_to if contact else '' }}">
+        </div>
+        
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Save Contact</button>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,104 @@
+{% extends "layout/base.html" %}
+
+{% block content %}
+<div class="top-bar">
+    <h1>Company Intelligence</h1>
+    <button onclick="document.getElementById('analyzeModal').showModal()" class="btn btn-primary">✨ New Analysis</button>
+</div>
+
+<div class="card">
+    <table style="width: 100%;">
+        <thead>
+            <tr>
+                <th>Company</th>
+                <th>Type</th>
+                <th>Date</th>
+                <th>Model</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for analysis in analyses %}
+            <tr>
+                <td style="font-weight: 500;">{{ analysis.company_name }}</td>
+                <td><span class="badge badge-contacted">{{ analysis.analysis_type|upper }}</span></td>
+                <td>{{ analysis.generated_at.strftime('%Y-%m-%d') }}</td>
+                <td style="color: var(--text-secondary); font-size: 0.85rem;">{{ analysis.model_used }}</td>
+                <td style="text-align: right;">
+                    <a href="/intel/{{ analysis.id }}" class="btn btn-sm btn-outline">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Analyze Modal -->
+<dialog id="analyzeModal" style="border: none; border-radius: 8px; padding: 0; max-width: 500px; width: 100%;">
+    <div style="padding: 1.5rem;">
+        <h3 style="margin-top: 0;">New AI Analysis</h3>
+        <div class="form-group">
+            <label>Company Name</label>
+            <input type="text" id="companyInput" placeholder="e.g. Acme Corp">
+        </div>
+        
+        <div class="form-group">
+            <label>Analysis Type</label>
+            <select id="typeInput">
+                <option value="swot">SWOT Analysis</option>
+                <option value="competitor">Competitor Analysis</option>
+                <option value="market">Market Research</option>
+            </select>
+        </div>
+        
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+            <button type="button" onclick="document.getElementById('analyzeModal').close()" class="btn btn-outline">Cancel</button>
+            <button onclick="runAnalysis()" class="btn btn-primary">Analyze</button>
+        </div>
+    </div>
+</dialog>
+
+<script>
+    async function runAnalysis() {
+        const company = document.getElementById('companyInput').value;
+        const type = document.getElementById('typeInput').value;
+        
+        if (!company) {
+            alert("Please enter a company name");
+            return;
+        }
+        
+        const btn = event.target;
+        const originalText = btn.innerText;
+        btn.innerText = "Analyzing...";
+        btn.disabled = true;
+
+        try {
+            const response = await fetch('/api/intel/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    company_name: company,
+                    analysis_type: type
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                window.location.href = `/intel/${data.id}`;
+            } else {
+                alert('Analysis failed: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('Error requesting analysis');
+            console.error(error);
+        } finally {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    }
+</script>
+{% endblock %}

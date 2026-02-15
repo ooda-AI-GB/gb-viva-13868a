@@ -1,0 +1,94 @@
+from fastapi import APIRouter, Depends, Request, Form, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
+from sqlalchemy import desc
+from app.database import get_db
+from app.models import Deal, Contact
+import app.routes as routes_module
+from datetime import date
+
+router = APIRouter()
+templates = Jinja2Templates(directory="app/templates")
+
+@router.get("/pipeline", response_class=HTMLResponse)
+async def pipeline_board(
+    request: Request,
+    user=Depends(routes_module.get_current_user),
+    subscription=Depends(routes_module.get_active_subscription),
+    db: Session = Depends(get_db)
+):
+    deals = db.query(Deal).all()
+    # Group deals by stage
+    stages = ["qualified", "proposal", "negotiation", "closed_won", "closed_lost"]
+    deals_by_stage = {stage: [] for stage in stages}
+    for deal in deals:
+        if deal.stage in deals_by_stage:
+            deals_by_stage[deal.stage].append(deal)
+        else:
+            # Fallback for unknown stages
+            deals_by_stage.setdefault("qualified", []).append(deal)
+            
+    return templates.TemplateResponse("pipeline/board.html", {
+        "request": request,
+        "deals_by_stage": deals_by_stage,
+        "user": user,
+        "stages": stages
+    })
+
+@router.post("/pipeline/deals")
+async def create_deal(
+    request: Request,
+    title: str = Form(...),
+    value: float = Form(...),
+    contact_id: int = Form(...),
+    stage: str = Form("qualified"),
+    probability: int = Form(0),
+    expected_close: str = Form(None), # Date string
+    notes: str = Form(None),
+    user=Depends(routes_module.get_current_user),
+    subscription=Depends(routes_module.get_active_subscription),
+    db: Session = Depends(get_db)
+):
+    # Parse date if provided
+    close_date = None
+    if expected_close:
+        try:
+            close_date = date.fromisoformat(expected_close)
+        except ValueError:
+            pass # Handle error or default to None
+
+    deal = Deal(
+        title=title,
+        value=value,
+        contact_id=contact_id,
+        stage=stage,
+        probability=probability,
+        expected_close=close_date,
+        notes=notes
+    )
+    db.add(deal)
+    db.commit()
+    return RedirectResponse(url="/pipeline", status_code=303)
+
+@router.post("/pipeline/deals/{id}/move")
+async def move_deal(
+    request: Request,
+    id: int,
+    stage: str = Form(...),
+    user=Depends(routes_module.get_current_user),
+    subscription=Depends(routes_module.get_active_subscription),
+    db: Session = Depends(get_db)
+):
+    deal = db.query(Deal).filter(Deal.id == id).first()
+    if not deal:
+        raise HTTPException(status_code=404, detail="Deal not found")
+    
+    deal.stage = stage
+    db.commit()
+    # If it's an AJAX request, we might want to return JSON, but for now redirect is safer for simple implementation
+    # However, for drag-and-drop usually we want JSON. 
+    # But the spec says "POST /pipeline/deals/{id}/move -> update stage" without specifying response type explicitly.
+    # Given typical "board" interactions, I'll return JSON if it looks like an API call, or redirect if form submit.
+    # Actually, let's just return a simple JSON response as it's likely consumed by JS.
+    return JSONResponse({"status": "success", "new_stage": stage})

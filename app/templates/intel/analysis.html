@@ -1,0 +1,27 @@
+{% extends "layout/base.html" %}
+
+{% block content %}
+<div class="top-bar">
+    <h1>Analysis: {{ analysis.company_name }}</h1>
+    <a href="/intel" class="btn btn-outline">Back to Intel</a>
+</div>
+
+<div class="card">
+    <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">
+        <div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">TYPE</div>
+            <div style="font-weight: 500;">{{ analysis.analysis_type|upper }}</div>
+        </div>
+        <div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">DATE</div>
+            <div style="font-weight: 500;">{{ analysis.generated_at.strftime('%Y-%m-%d %H:%M') }}</div>
+        </div>
+        <div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">MODEL</div>
+            <div style="font-weight: 500;">{{ analysis.model_used }}</div>
+        </div>
+    </div>
+    
+    <div style="white-space: pre-wrap; line-height: 1.6; font-family: monospace;">{{ analysis.content }}</div>
+</div>
+{% endblock %}
